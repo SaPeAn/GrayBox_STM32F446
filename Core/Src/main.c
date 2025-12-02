@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "ILI9341_GFX.h"
+#include "ILI9341_STM32_Driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +51,7 @@ RTC_HandleTypeDef hrtc;
 
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim11;
 
@@ -125,10 +128,18 @@ int main(void)
   /* USER CODE BEGIN 2 */
   __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 2000);
   HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
+
+  ILI9341_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
+  ILI9341_FillScreen(WHITE);
+    ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+    ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
   while (1)
   {
 	  for(int i = 0; i < 3000; i+=10) {
@@ -612,8 +623,11 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
 }
 
@@ -645,7 +659,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(DISP_RST_GPIO_Port, DISP_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TOUCH_CS_GPIO_Port, TOUCH_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, TOUCH_CS_Pin|DISP_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PWR_OFF_Pin DISP_RST_Pin */
   GPIO_InitStruct.Pin = PWR_OFF_Pin|DISP_RST_Pin;
@@ -661,12 +675,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DISP_DC_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : TOUCH_CS_Pin */
-  GPIO_InitStruct.Pin = TOUCH_CS_Pin;
+  /*Configure GPIO pins : TOUCH_CS_Pin DISP_CS_Pin */
+  GPIO_InitStruct.Pin = TOUCH_CS_Pin|DISP_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TOUCH_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : TOUCH_IRQ_Pin */
   GPIO_InitStruct.Pin = TOUCH_IRQ_Pin;
