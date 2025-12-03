@@ -77,6 +77,8 @@ void Error_Handler(void);
 #define SOUND_WS_GPIO_Port GPIOA
 #define DISP_SCK_Pin GPIO_PIN_5
 #define DISP_SCK_GPIO_Port GPIOA
+#define DISP_MISO_Pin GPIO_PIN_6
+#define DISP_MISO_GPIO_Port GPIOA
 #define DISP_MOSI_Pin GPIO_PIN_7
 #define DISP_MOSI_GPIO_Port GPIOA
 #define DISP_RST_Pin GPIO_PIN_4

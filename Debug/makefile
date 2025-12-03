@@ -58,34 +58,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := GreyBox_STM32F446
+BUILD_ARTIFACT_NAME := 4_GreyBox_STM32F446
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-GreyBox_STM32F446.elf \
+4_GreyBox_STM32F446.elf \
 
 MAP_FILES += \
-GreyBox_STM32F446.map \
+4_GreyBox_STM32F446.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-GreyBox_STM32F446.list \
+4_GreyBox_STM32F446.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: GreyBox_STM32F446.elf secondary-outputs
+main-build: 4_GreyBox_STM32F446.elf secondary-outputs
 
 # Tool invocations
-GreyBox_STM32F446.elf GreyBox_STM32F446.map: $(OBJS) $(USER_OBJS) D:\_Proj_MCU\STM32\4_GreyBox_STM32F446RET6_1\STM32F446RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "GreyBox_STM32F446.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\_Proj_MCU\STM32\4_GreyBox_STM32F446RET6_1\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="GreyBox_STM32F446.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+4_GreyBox_STM32F446.elf 4_GreyBox_STM32F446.map: $(OBJS) $(USER_OBJS) D:\_Proj_MCU\STM32\4_GreyBox_STM32F446\STM32F446RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "4_GreyBox_STM32F446.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\_Proj_MCU\STM32\4_GreyBox_STM32F446\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="4_GreyBox_STM32F446.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -94,14 +94,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-GreyBox_STM32F446.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "GreyBox_STM32F446.list"
+4_GreyBox_STM32F446.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "4_GreyBox_STM32F446.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) GreyBox_STM32F446.elf GreyBox_STM32F446.list GreyBox_STM32F446.map default.size.stdout
+	-$(RM) 4_GreyBox_STM32F446.elf 4_GreyBox_STM32F446.list 4_GreyBox_STM32F446.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

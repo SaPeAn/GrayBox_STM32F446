@@ -21,9 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
-#include "ILI9341_GFX.h"
-#include "ILI9341_STM32_Driver.h"
+#include "st7789.h"
+//#include "ILI9341_GFX.h"
+//#include "ILI9341_STM32_Driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -129,17 +129,18 @@ int main(void)
   __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 2000);
   HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
 
-  ILI9341_Init();
-
+ // ILI9341_Init();
+  ST7789_Init();
+  ST7789_Fill_Color(YELLOW);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
+ // ILI9341_FillScreen(WHITE);
+ // ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+ // ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
 
-  ILI9341_FillScreen(WHITE);
-    ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
-    ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
   while (1)
   {
 	  for(int i = 0; i < 3000; i+=10) {
@@ -150,6 +151,7 @@ int main(void)
 		  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, i);
 		  HAL_Delay(1);
 	  }
+	  ST7789_Fill_Color(YELLOW);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -412,7 +414,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
