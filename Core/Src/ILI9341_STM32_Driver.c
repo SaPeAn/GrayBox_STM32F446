@@ -8,21 +8,21 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
   /* Deselect when Tx Complete */
   if(hspi == HSPI_INSTANCE)
   {
-	  //HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
+	  HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
   }
 }
 
 static void ILI9341_SPI_Tx(uint8_t data)
 {
 	while(!__HAL_SPI_GET_FLAG(HSPI_INSTANCE, SPI_FLAG_TXE));
-	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, &data, 1);
+	//HAL_SPI_Transmit_DMA(HSPI_INSTANCE, &data, 1);
 	HAL_SPI_Transmit(HSPI_INSTANCE, &data, 1, 10);
 }
 
 static void ILI9341_SPI_TxBuffer(uint8_t *buffer, uint16_t len)
 {
 	while(!__HAL_SPI_GET_FLAG(HSPI_INSTANCE, SPI_FLAG_TXE));
-	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, buffer, len);
+	//HAL_SPI_Transmit_DMA(HSPI_INSTANCE, buffer, len);
 	HAL_SPI_Transmit(HSPI_INSTANCE, buffer, len, 10);
 }
 
@@ -47,7 +47,7 @@ void ILI9341_WriteBuffer(uint8_t *buffer, uint16_t len)
 	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_SET);	//data
 	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);	//select
 	ILI9341_SPI_TxBuffer(buffer, len);
-	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
+    HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
 void ILI9341_SetAddress(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
@@ -94,7 +94,7 @@ void ILI9341_Init(void)
 
 	//SOFTWARE RESET
 	ILI9341_WriteCommand(0x01);
-	HAL_Delay(10);
+	HAL_Delay(1000);
 
 	//POWER CONTROL A
 	ILI9341_WriteCommand(0xCB);

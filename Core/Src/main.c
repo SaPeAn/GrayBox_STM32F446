@@ -21,9 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "st7789.h"
-//#include "ILI9341_GFX.h"
-//#include "ILI9341_STM32_Driver.h"
+#include "ILI9341_GFX.h"
+#include "ILI9341_STM32_Driver.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,7 +45,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-DMA_HandleTypeDef hdma_adc1;
 
 I2S_HandleTypeDef hi2s3;
 
@@ -126,32 +127,84 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 2000);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 3000);
   HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
 
- // ILI9341_Init();
-  ST7789_Init();
-  ST7789_Fill_Color(YELLOW);
+  ILI9341_Init();
+  HAL_Delay(20);
+  ILI9341_FillScreen(BLACK);
+  HAL_Delay(20);
+  ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+  HAL_Delay(20);
+  ILI9341_FillScreen(WHITE);
+    ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+    ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
+    HAL_Delay(1000);
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
- // ILI9341_FillScreen(WHITE);
- // ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
- // ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
 
+  ILI9341_DrawText("HELLO", FONT4, 10, 10, BLACK, WHITE);
+ HAL_Delay(1000);
   while (1)
   {
-	  for(int i = 0; i < 3000; i+=10) {
-		  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, i);
-		  HAL_Delay(1);
-	  }
-	  for(int i = 3000; i > 0; i-=10) {
-		  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, i);
-		  HAL_Delay(1);
-	  }
-	  ST7789_Fill_Color(YELLOW);
+	  //Writing numbers
+	      ILI9341_FillScreen(WHITE);
+	      static char BufferText[30];
+	      for(uint8_t i = 0; i <= 5; i++)
+	      {
+	        sprintf(BufferText, "COUNT : %d", i);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 10, BLACK, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 30, BLUE, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 50, RED, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 70, GREEN, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 90, YELLOW, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 110, PURPLE, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 130, ORANGE, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 150, MAROON, WHITE);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 170, WHITE, BLACK);
+	        ILI9341_DrawText(BufferText, FONT3, 10, 190, BLUE, BLACK);
+	        HAL_Delay(1000);
+	      }
+
+	      // Horizontal Line (X, Y, Length, Color)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawHLine(50, 120, 200, NAVY);
+	      HAL_Delay(1000);
+
+	      // Vertical Line (X, Y, Length, Color)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawVLine(160, 40, 150, DARKGREEN);
+	      HAL_Delay(1000);
+
+	      // Hollow Circle (Centre X, Centre Y, Radius, Color)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawHollowCircle(160, 120, 80, PINK);
+	      HAL_Delay(1000);
+
+	      // Filled Circle (Centre X, Centre Y, Radius, Color)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawFilledCircle(160, 120, 50, CYAN);
+	      HAL_Delay(1000);
+
+	      // Filled Rectangle (Start X, Start Y, Length X, Length Y)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawRectangle(50, 50, 220, 140, GREENYELLOW);
+	      HAL_Delay(1000);
+
+	      // Hollow Rectangle (Start X, Start Y, End X, End Y)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawHollowRectangleCoord(50, 50, 270, 190, DARKCYAN);
+	      HAL_Delay(1000);
+
+	      // Simple Pixel Only (X, Y, Color)
+	      ILI9341_FillScreen(WHITE);
+	      ILI9341_DrawPixel(100, 100, BLACK);
+	      HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -171,7 +224,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -181,10 +234,10 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 96;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 7;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -196,11 +249,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -227,7 +280,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -414,7 +467,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -624,11 +677,8 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
 }

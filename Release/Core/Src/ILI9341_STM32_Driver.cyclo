@@ -1,5 +1,5 @@
 ../Core/Src/ILI9341_STM32_Driver.c:15:13:ILI9341_SPI_Tx	2
-../Core/Src/ILI9341_STM32_Driver.c:6:6:HAL_SPI_TxCpltCallback	1
+../Core/Src/ILI9341_STM32_Driver.c:6:6:HAL_SPI_TxCpltCallback	2
 ../Core/Src/ILI9341_STM32_Driver.c:29:6:ILI9341_WriteCommand	1
 ../Core/Src/ILI9341_STM32_Driver.c:37:6:ILI9341_WriteData	1
 ../Core/Src/ILI9341_STM32_Driver.c:45:6:ILI9341_WriteBuffer	2
