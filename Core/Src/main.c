@@ -15,6 +15,7 @@
   *
   ******************************************************************************
   */
+#define  AVER_PERIOD    100
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -26,16 +27,62 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "common.h"
+#include "ringbuf.h"
+#include "scheduler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef union{
+	uint16_t array[5];
+	struct{
+		uint16_t joy;
+		uint16_t jox;
+		uint16_t batlvl;
+		uint16_t tmpr;
+		uint16_t vref;
+	};
+}ADCdat_t;
 
+
+typedef struct
+{
+  int batlvl;
+  int jox;
+  int joy;
+  int tmpr;
+  int vref;
+}ADCaverdat_t;
+
+typedef struct
+{
+  uint8_t joyx[128];
+  uint8_t joyy[128];
+  uint8_t Vbat[128];
+  uint8_t Vpowsup[128];
+  uint8_t Temper[128];
+  uint8_t UART_string[1024];
+  uint8_t Seconds[128];
+}DispDat_t;
+
+char InfoStr[150] = {0};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+RINGBUF_t ringbuf;
+uint8_t rx_buf[1024] = {0};
+uint8_t temp_byte;
+DispDat_t temp_str = {0};
 
+ADCdat_t ADC_data;
+uint8_t temp_byte;
+ADCaverdat_t ADC_averdata;
+
+uint32_t aver_counter = 0;
+uint32_t adc_complete = 1;
+uint32_t adc_avercomplete = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,6 +92,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2S_HandleTypeDef hi2s3;
 
@@ -84,7 +132,17 @@ static void MX_TIM11_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int _write(int file, char *ptr, int len)
+{
+  (void)file;
+  int DataIdx;
 
+  for (DataIdx = 0; DataIdx < len; DataIdx++)
+  {
+	  ITM_SendChar(*ptr++);
+  }
+  return len;
+}
 /* USER CODE END 0 */
 
 /**
@@ -127,31 +185,120 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 3000);
-  HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
 
+  commoninit();
   ILI9341_Init();
-  HAL_Delay(20);
-  ILI9341_FillScreen(BLACK);
-  HAL_Delay(20);
   ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
-  HAL_Delay(20);
-  ILI9341_FillScreen(WHITE);
-    ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
-    ILI9341_DrawText("HELLO WORLD", FONT4, 90, 110, BLACK, WHITE);
-    HAL_Delay(1000);
-
-
+  RingBuf_Init(rx_buf, 1024, 1, &ringbuf);
+  ILI9341_FillScreen(BLACK);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
 
-
-  ILI9341_DrawText("HELLO", FONT4, 10, 10, BLACK, WHITE);
- HAL_Delay(1000);
+  uint16_t buf_len = 0;
+	uint16_t buf_len_prev = 0;
+	uint32_t period[3] = {1, 20, 5};
+	uint32_t temp_tick[3] = {0};
+	int Vtemper = 0;
+	int Temperature = 0;
+	int joyVoltX = 0;
+	int joyVoltY = 0;
+	int Vbattery = 0;
+	int Vpower = 0;
   while (1)
   {
+	  check_btn_jstk();
+
+	  if(B1.BtnON)
+	  {
+		  B1.BtnON = 0;
+		  decbright();
+		  ILI9341_DrawText("BATTARY LOW!", FONT4, 25, 60, GREEN, BLACK);
+	  }
+	  if(B2.BtnON)
+	  {
+		  B2.BtnON = 0;
+		  incbright();
+		  ILI9341_DrawText("BATTARY LOW!", FONT4, 25, 60, BLACK, GREEN);
+	  }
+	  if(B3.BtnON)
+	  	  {
+	  		  B3.BtnON = 0;
+	  		  ShutDown();
+	  	  }
+
+	  RingBuf_Available(&buf_len, &ringbuf);
+	  	  if(buf_len)
+	  	  {
+	  		if(buf_len_prev != buf_len)
+	  		{
+	  		  buf_len_prev = buf_len;
+	  		  temp_tick[2] = HAL_GetTick();
+	  		}
+	  		if((HAL_GetTick() - temp_tick[2]) > period[2])
+	  		{
+	  		  RingBuf_DataRead(temp_str.UART_string, buf_len, &ringbuf);
+	  		  temp_str.UART_string[buf_len] = '\0';
+	  		  HAL_UART_Transmit_IT(&huart1, (uint8_t*)"OK!\n", 5);
+	  		}
+	  	  }
+
+	  	  if(adc_avercomplete)
+	  	  {
+	  		ADC_averdata.batlvl /= aver_counter;
+	  		ADC_averdata.jox /= aver_counter;
+	  		ADC_averdata.joy /= aver_counter;
+	  		ADC_averdata.tmpr /= aver_counter;
+	  		ADC_averdata.vref /= aver_counter;
+	  		aver_counter = 0;
+
+	  		joyVoltX = (ADC_averdata.jox * 1210) / ADC_averdata.vref;
+			sprintf((char*)temp_str.joyx, "Jx: %d.%02dV", joyVoltX/1000, (joyVoltX%1000)/10);
+			joyVoltY = (ADC_averdata.joy * 1210) / ADC_averdata.vref;
+			sprintf((char*)temp_str.joyy, "Jy: %d.%02dV", joyVoltY/1000, (joyVoltY%1000)/10);
+			Vbattery = (ADC_averdata.batlvl * 1853) / ADC_averdata.vref;
+			sprintf((char*)temp_str.Vbat, "Vb: %d.%02dV", Vbattery/1000, (Vbattery%1000)/10);
+			Vpower = (4095 * 1210) / ADC_averdata.vref;
+			sprintf((char*)temp_str.Vpowsup, "Vp: %d.%02dV", Vpower/1000, (Vpower%1000)/10);
+			Vtemper = (ADC_averdata.tmpr * 12100) / ADC_averdata.vref; // x10 mV
+			Temperature = 25 + (Vtemper - 7600) / 25;
+	  		sprintf((char*)temp_str.Temper, "T:  %d*C",Temperature);
+
+	  		ADC_averdata.batlvl = 0;
+	  		ADC_averdata.jox = 0;
+	  		ADC_averdata.joy = 0;
+	  		ADC_averdata.tmpr = 0;
+	  		ADC_averdata.vref = 0;
+	  		adc_avercomplete = 0;
+		  	sprintf((char*)temp_str.Seconds, "%02lu:%02lu:%02lu.%01lu", (HAL_GetTick()/1000)/3600, ((HAL_GetTick()/1000)%3600)/60, (HAL_GetTick()/1000)%60, (HAL_GetTick() % 1000) / 100);
+	  		aver_counter = AVER_PERIOD;
+	  	  }
+
+	  	  if((HAL_GetTick() - temp_tick[0]) > period[0])
+	  	  {
+	  		temp_tick[0] = HAL_GetTick();
+	  		ILI9341_DrawText((char*)temp_str.joyx, FONT4, 25, 0, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.joyy, FONT4, 25, 20, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.Vbat, FONT4, 25, 40, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.Vpowsup, FONT4, 25, 60, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.Temper, FONT4, 25, 80, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.Seconds, FONT4, 25, 100, GREEN, BLACK);
+	  		ILI9341_DrawText((char*)temp_str.UART_string, FONT4, 25, 120, GREEN, BLACK);
+	  	  }
+
+	  	  /*---------------------------------------------------------------------*/
+
+	  	  if(adc_complete)
+	  	  {
+	  		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
+	  		adc_complete = 0;
+	  	  }
+
+
+#if 0
 	  //Writing numbers
 	      ILI9341_FillScreen(WHITE);
 	      static char BufferText[30];
@@ -205,6 +352,8 @@ int main(void)
 	      ILI9341_FillScreen(WHITE);
 	      ILI9341_DrawPixel(100, 100, BLACK);
 	      HAL_Delay(1000);
+
+#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -224,7 +373,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -235,9 +384,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 96;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -249,11 +398,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -280,7 +429,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -552,7 +701,7 @@ static void MX_TIM11_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 50000;
+  sConfigOC.Pulse = 3000;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim11, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -677,6 +826,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
@@ -752,7 +904,49 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_IncTick(void)
+{
+  uwTick += uwTickFreq;
+  SchedPeriodIncr();
+}
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart == &huart1)
+  {
+    RingBuf_BytePut(temp_byte, &ringbuf);
+    HAL_UART_Receive_IT (&huart1, &temp_byte, 1);
+  }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart == &huart1)
+  {
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  if(hadc->Instance == ADC1)
+  {
+    if(aver_counter < AVER_PERIOD)
+    {
+      ADC_averdata.batlvl += (uint32_t) ADC_data.batlvl;
+      ADC_averdata.jox += (uint32_t) ADC_data.jox;
+      ADC_averdata.joy += (uint32_t) ADC_data.joy;
+      ADC_averdata.tmpr += (uint32_t) ADC_data.tmpr;
+      ADC_averdata.vref += (uint32_t) ADC_data.vref;
+      aver_counter++;
+    }
+    else
+    {
+    	adc_avercomplete = 1;
+    }
+
+    adc_complete = 1;
+  }
+}
 /* USER CODE END 4 */
 
 /**
