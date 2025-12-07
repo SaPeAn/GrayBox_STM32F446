@@ -64,6 +64,7 @@ void commoninit(void);
 void gettime(void);
 uint8 getbatlvl(uint8);
 uint8 getrand(uint8);
+int clamp(int, int, int);
 void randinit(void);
 uint8 dig_to_smb(uint8);
 void u16_to_str(uint8*, uint16, uint8);
@@ -126,6 +127,7 @@ void TestBtn(tButton*);
 void initbuttons(void);
 void checkjoydir(void);
 void check_btn_jstk(void);
+void pressbutton(tButton*, void (*)(void));
 /*----------------------------------------------------------------------------*/
 
 #endif	/* COMMON_H */

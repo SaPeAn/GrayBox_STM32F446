@@ -49,21 +49,33 @@ typedef union{
 typedef struct
 {
   int batlvl;
+  int batlvl_prev;
   int jox;
+  int jox_prev;
   int joy;
+  int joy_prev;
   int tmpr;
+  int tmpr_prev;
   int vref;
+  int vref_prev;
 }ADCaverdat_t;
 
 typedef struct
 {
   uint8_t joyx[128];
+  uint8_t joyx_prev[128];
   uint8_t joyy[128];
+  uint8_t joyy_prev[128];
   uint8_t Vbat[128];
+  uint8_t Vbat_prev[128];
   uint8_t Vpowsup[128];
+  uint8_t Vpowsup_prev[128];
   uint8_t Temper[128];
+  uint8_t Temper_prev[128];
   uint8_t UART_string[1024];
+  uint8_t UART_string_prev[1024];
   uint8_t Seconds[128];
+  uint8_t Seconds_prev[128];
 }DispDat_t;
 
 char InfoStr[150] = {0};
@@ -71,7 +83,7 @@ char InfoStr[150] = {0};
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-RINGBUF_t ringbuf;
+RINGBUF_t UartRXbuf;
 uint8_t rx_buf[1024] = {0};
 uint8_t temp_byte;
 DispDat_t temp_str = {0};
@@ -80,9 +92,9 @@ ADCdat_t ADC_data;
 uint8_t temp_byte;
 ADCaverdat_t ADC_averdata;
 
-uint32_t aver_counter = 0;
+uint32_t summ_counter = 0;
 uint32_t adc_complete = 1;
-uint32_t adc_avercomplete = 0;
+uint32_t adc_summcomplete = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -143,6 +155,137 @@ int _write(int file, char *ptr, int len)
   }
   return len;
 }
+
+void UART_handler(void)
+{
+	static uint32_t temp_tick = 0;
+	static uint16_t buf_len = 0;
+	static uint16_t buf_len_prev = 0;
+	RingBuf_Available(&buf_len, &UartRXbuf);
+	if(buf_len)
+	{
+		if(buf_len_prev != buf_len)
+		{
+			buf_len_prev = buf_len;
+			temp_tick = HAL_GetTick();
+		}
+		if((HAL_GetTick() - temp_tick) > 5)
+		{
+			RingBuf_DataRead(temp_str.UART_string, buf_len, &UartRXbuf);
+			temp_str.UART_string[buf_len] = '\0';
+			HAL_UART_Transmit_IT(&huart1, (uint8_t*)"OK!\n", 5);
+		}
+	}
+}
+
+void ADC_handler(void)
+{
+	static int Vtemper = 0;
+	static int Temperature = 0;
+	static int joyVoltX = 0;
+	static int joyVoltY = 0;
+	static int Vbattery = 0;
+	static int Vpower = 0;
+
+	if(adc_summcomplete)
+	{
+		ADC_averdata.batlvl /= summ_counter;
+		ADC_averdata.jox /= summ_counter;
+		ADC_averdata.joy /= summ_counter;
+		ADC_averdata.tmpr /= summ_counter;
+		ADC_averdata.vref /= summ_counter;
+
+		joyVoltX = (ADC_averdata.jox * 1210) / ADC_averdata.vref;
+		sprintf((char*)temp_str.joyx, "Jx: %d.%02dV", joyVoltX/1000, (joyVoltX%1000)/10);
+		joyVoltY = (ADC_averdata.joy * 1210) / ADC_averdata.vref;
+		sprintf((char*)temp_str.joyy, "Jy: %d.%02dV", joyVoltY/1000, (joyVoltY%1000)/10);
+		Vbattery = (ADC_averdata.batlvl * 1853) / ADC_averdata.vref;
+		sprintf((char*)temp_str.Vbat, "Vb: %d.%02dV", Vbattery/1000, (Vbattery%1000)/10);
+		Vpower = (4095 * 1210) / ADC_averdata.vref;
+		sprintf((char*)temp_str.Vpowsup, "Vp: %d.%02dV", Vpower/1000, (Vpower%1000)/10);
+		Vtemper = (ADC_averdata.tmpr * 12100) / ADC_averdata.vref; // x10 mV
+		Temperature = 25 + (Vtemper - 7600) / 25;
+		sprintf((char*)temp_str.Temper, "T:  %d*C",Temperature);
+
+		ADC_averdata.batlvl = 0;
+		ADC_averdata.jox = 0;
+		ADC_averdata.joy = 0;
+		ADC_averdata.tmpr = 0;
+		ADC_averdata.vref = 0;
+
+	    joystick.ox = (uint8_t)clamp(((joyVoltX * 10) / 129), 0, 255);
+	    joystick.oy = (uint8_t)clamp(((joyVoltY* 10) / 129), 0, 255);
+	    Ubat = (uint8_t)clamp(((Vbattery * 10) / 164), 0, 255);
+
+		adc_summcomplete = 0;
+		summ_counter = 0;
+	}
+
+	if(adc_complete)
+	{
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
+		adc_complete = 0;
+	}
+}
+
+void displayparams(void)
+{
+	static char tempstring[10][100];
+	static char tempstring_prev[10][100];
+	static uint16_t text_color = WHITE;
+
+	sprintf(tempstring[0], "jx%03u jy%03u BAT%03u<%d>", joystick.ox, joystick.oy, Ubat, batlvl);
+	sprintf(tempstring[1], "PWM%03u", brightPWM);
+	if(strncmp(tempstring[0], tempstring_prev[0], 10) || strncmp(tempstring[1], tempstring_prev[1], 10))
+	{
+		ILI9341_DrawText("8 bit parameters", FONT4, 125, 0, text_color, BLACK);
+		ILI9341_DrawText(tempstring[0], FONT4, 125, 20, text_color, BLACK);
+		ILI9341_DrawText(tempstring[1], FONT4, 125, 40, text_color, BLACK);
+		strncpy(tempstring_prev[0], tempstring[0], 100);
+		strncpy(tempstring_prev[1], tempstring[1], 100);
+	}
+
+
+
+	if(strncmp((char*)temp_str.joyx, (char*)temp_str.joyx_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.joyx, FONT4, 0, 0, text_color, BLACK);
+		strncpy((char*)temp_str.joyx_prev, (char*)temp_str.joyx, 128);
+	}
+	if(strncmp((char*)temp_str.joyy, (char*)temp_str.joyy_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.joyy, FONT4, 0, 20, text_color, BLACK);
+		strncpy((char*)temp_str.joyy_prev, (char*)temp_str.joyy, 128);
+	}
+	if(strncmp((char*)temp_str.Vbat, (char*)temp_str.Vbat_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.Vbat, FONT4, 0, 40, text_color, BLACK);
+		strncpy((char*)temp_str.Vbat_prev, (char*)temp_str.Vbat, 128);
+	}
+	if(strncmp((char*)temp_str.Vpowsup, (char*)temp_str.Vpowsup_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.Vpowsup, FONT4, 0, 60, text_color, BLACK);
+		strncpy((char*)temp_str.Vpowsup_prev, (char*)temp_str.Vpowsup, 128);
+	}
+	if(strncmp((char*)temp_str.Temper, (char*)temp_str.Temper_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.Temper, FONT4, 0, 80, text_color, BLACK);
+		strncpy((char*)temp_str.Temper_prev, (char*)temp_str.Temper, 128);
+	}
+
+	sprintf((char*)temp_str.Seconds, "%02lu:%02lu:%02lu", (HAL_GetTick()/1000)/3600, ((HAL_GetTick()/1000)%3600)/60, (HAL_GetTick()/1000)%60);
+	if(strncmp((char*)temp_str.Seconds, (char*)temp_str.Seconds_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.Seconds, FONT4, 0, 100, text_color, BLACK);
+		strncpy((char*)temp_str.Seconds_prev, (char*)temp_str.Seconds, 128);
+	}
+	if(strncmp((char*)temp_str.UART_string, (char*)temp_str.UART_string_prev, 10))
+	{
+		ILI9341_DrawText((char*)temp_str.UART_string, FONT4, 0, 120, text_color, BLACK);
+		strncpy((char*)temp_str.UART_string_prev, (char*)temp_str.UART_string, 1024);
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -186,116 +329,37 @@ int main(void)
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
 
-  commoninit();
   ILI9341_Init();
-  ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
-  RingBuf_Init(rx_buf, 1024, 1, &ringbuf);
   ILI9341_FillScreen(BLACK);
+  ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+  RingBuf_Init(rx_buf, 1024, 1, &UartRXbuf);
+  HAL_Delay(250);
+  commoninit();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  //-------------scheduler functions-------------
+
+  SchedAddEvent(displayparams, 100);
+
+  //---------------------------------------------
+
   HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
 
-  uint16_t buf_len = 0;
-	uint16_t buf_len_prev = 0;
-	uint32_t period[3] = {1, 20, 5};
-	uint32_t temp_tick[3] = {0};
-	int Vtemper = 0;
-	int Temperature = 0;
-	int joyVoltX = 0;
-	int joyVoltY = 0;
-	int Vbattery = 0;
-	int Vpower = 0;
   while (1)
   {
 	  check_btn_jstk();
+	  batcheck();
+	  UART_handler();
+      SchedEventProcess();
+	  ADC_handler();
+	  pressbutton(&B1, decbright);
+	  pressbutton(&B2, incbright);
+	  pressbutton(&B3, ShutDown);
 
-	  if(B1.BtnON)
-	  {
-		  B1.BtnON = 0;
-		  decbright();
-		  ILI9341_DrawText("BATTARY LOW!", FONT4, 25, 60, GREEN, BLACK);
-	  }
-	  if(B2.BtnON)
-	  {
-		  B2.BtnON = 0;
-		  incbright();
-		  ILI9341_DrawText("BATTARY LOW!", FONT4, 25, 60, BLACK, GREEN);
-	  }
-	  if(B3.BtnON)
-	  	  {
-	  		  B3.BtnON = 0;
-	  		  ShutDown();
-	  	  }
-
-	  RingBuf_Available(&buf_len, &ringbuf);
-	  	  if(buf_len)
-	  	  {
-	  		if(buf_len_prev != buf_len)
-	  		{
-	  		  buf_len_prev = buf_len;
-	  		  temp_tick[2] = HAL_GetTick();
-	  		}
-	  		if((HAL_GetTick() - temp_tick[2]) > period[2])
-	  		{
-	  		  RingBuf_DataRead(temp_str.UART_string, buf_len, &ringbuf);
-	  		  temp_str.UART_string[buf_len] = '\0';
-	  		  HAL_UART_Transmit_IT(&huart1, (uint8_t*)"OK!\n", 5);
-	  		}
-	  	  }
-
-	  	  if(adc_avercomplete)
-	  	  {
-	  		ADC_averdata.batlvl /= aver_counter;
-	  		ADC_averdata.jox /= aver_counter;
-	  		ADC_averdata.joy /= aver_counter;
-	  		ADC_averdata.tmpr /= aver_counter;
-	  		ADC_averdata.vref /= aver_counter;
-	  		aver_counter = 0;
-
-	  		joyVoltX = (ADC_averdata.jox * 1210) / ADC_averdata.vref;
-			sprintf((char*)temp_str.joyx, "Jx: %d.%02dV", joyVoltX/1000, (joyVoltX%1000)/10);
-			joyVoltY = (ADC_averdata.joy * 1210) / ADC_averdata.vref;
-			sprintf((char*)temp_str.joyy, "Jy: %d.%02dV", joyVoltY/1000, (joyVoltY%1000)/10);
-			Vbattery = (ADC_averdata.batlvl * 1853) / ADC_averdata.vref;
-			sprintf((char*)temp_str.Vbat, "Vb: %d.%02dV", Vbattery/1000, (Vbattery%1000)/10);
-			Vpower = (4095 * 1210) / ADC_averdata.vref;
-			sprintf((char*)temp_str.Vpowsup, "Vp: %d.%02dV", Vpower/1000, (Vpower%1000)/10);
-			Vtemper = (ADC_averdata.tmpr * 12100) / ADC_averdata.vref; // x10 mV
-			Temperature = 25 + (Vtemper - 7600) / 25;
-	  		sprintf((char*)temp_str.Temper, "T:  %d*C",Temperature);
-
-	  		ADC_averdata.batlvl = 0;
-	  		ADC_averdata.jox = 0;
-	  		ADC_averdata.joy = 0;
-	  		ADC_averdata.tmpr = 0;
-	  		ADC_averdata.vref = 0;
-	  		adc_avercomplete = 0;
-		  	sprintf((char*)temp_str.Seconds, "%02lu:%02lu:%02lu.%01lu", (HAL_GetTick()/1000)/3600, ((HAL_GetTick()/1000)%3600)/60, (HAL_GetTick()/1000)%60, (HAL_GetTick() % 1000) / 100);
-	  		aver_counter = AVER_PERIOD;
-	  	  }
-
-	  	  if((HAL_GetTick() - temp_tick[0]) > period[0])
-	  	  {
-	  		temp_tick[0] = HAL_GetTick();
-	  		ILI9341_DrawText((char*)temp_str.joyx, FONT4, 25, 0, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.joyy, FONT4, 25, 20, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.Vbat, FONT4, 25, 40, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.Vpowsup, FONT4, 25, 60, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.Temper, FONT4, 25, 80, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.Seconds, FONT4, 25, 100, GREEN, BLACK);
-	  		ILI9341_DrawText((char*)temp_str.UART_string, FONT4, 25, 120, GREEN, BLACK);
-	  	  }
-
-	  	  /*---------------------------------------------------------------------*/
-
-	  	  if(adc_complete)
-	  	  {
-	  		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
-	  		adc_complete = 0;
-	  	  }
 
 
 #if 0
@@ -373,7 +437,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -387,7 +451,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
-  RCC_OscInitStruct.PLL.PLLR = 2;
+  RCC_OscInitStruct.PLL.PLLR = 3;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -397,12 +461,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLRCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -429,7 +493,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -449,7 +513,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_112CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -616,7 +680,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -689,7 +753,7 @@ static void MX_TIM11_Init(void)
   htim11.Instance = TIM11;
   htim11.Init.Prescaler = 1;
   htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim11.Init.Period = 3000;
+  htim11.Init.Period = 4400;
   htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
@@ -701,7 +765,7 @@ static void MX_TIM11_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 3000;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim11, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -914,7 +978,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart == &huart1)
   {
-    RingBuf_BytePut(temp_byte, &ringbuf);
+    RingBuf_BytePut(temp_byte, &UartRXbuf);
     HAL_UART_Receive_IT (&huart1, &temp_byte, 1);
   }
 }
@@ -930,20 +994,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
   {
-    if(aver_counter < AVER_PERIOD)
+    if(summ_counter < AVER_PERIOD)
     {
       ADC_averdata.batlvl += (uint32_t) ADC_data.batlvl;
       ADC_averdata.jox += (uint32_t) ADC_data.jox;
       ADC_averdata.joy += (uint32_t) ADC_data.joy;
       ADC_averdata.tmpr += (uint32_t) ADC_data.tmpr;
       ADC_averdata.vref += (uint32_t) ADC_data.vref;
-      aver_counter++;
+      summ_counter++;
     }
     else
     {
-    	adc_avercomplete = 1;
+      adc_summcomplete = 1;
     }
-
     adc_complete = 1;
   }
 }

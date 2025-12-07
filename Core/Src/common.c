@@ -20,13 +20,13 @@ tJoystick joystick = {0};
 uint32 timestamp = 0;    // System timer (ms), starts counting from power on or last restart
 //tRTC rtcbcd;          // structure for clock/date from RTC module (BCD format))
 tRTC rtcraw;          // structure for system clock/date (uint8)
-uint8 Ubat;              // ADC data from battery level measurement
-uint8 batlvl;            // battery level for display (0...5)
+uint8 Ubat = 255;              // ADC data from battery level measurement
+uint8 batlvl = 0;            // battery level for display (0...5)
 uint8 brightlvl;         // brightness level for display (0...7)
 uint8 brightPWM = 220;   // PWM duty cycle value for regulate display brightness
 
 /*----------------------------------UTILITIES-------------------------------*/
-uint8 clamp(uint8 val, uint8 min, uint8 max)
+int clamp(int val, int min, int max)
 {
   if(val > max) val = max;
   if(val < min) val = min;
@@ -40,7 +40,7 @@ void randinit(void)
 
 uint8 getrand(uint8 N)
 {
-  return (rand() % (N + 1));
+  return (uint8_t)(rand() % (N + 1));
 }
 
 uint8 dig_to_smb(uint8 dig)
@@ -57,6 +57,7 @@ uint8 dig_to_smb(uint8 dig)
     case 7: return '7'; 
     case 8: return '8';
     case 9: return '9';
+    default: return 0;
   }
   return 0;
 }
@@ -103,13 +104,13 @@ void u16_to_str(uint8* str, uint16 num, uint8 N)
 
 void commoninit(void)
 {
-  HAL_GPIO_WritePin(PWR_OFF_GPIO_Port, PWR_OFF_Pin, SET);
+  HAL_GPIO_WritePin(PWR_OFF_GPIO_Port, PWR_OFF_Pin, (GPIO_PinState)SET);
   //HAL_GPIO_WritePin(SOUND__GPIO_Port, SOUND__Pin, RESET);
   //HAL_GPIO_WritePin(SOUND_B5_GPIO_Port, SOUND_B5_Pin, RESET);
   initbuttons();
-  BrightPWMgen(220);
   brightPWM = EEPROM_readbyte(PWM_MEMADR);
   if(brightPWM == 0) brightPWM = 220;
+  BrightPWMgen(brightPWM);
 }
 
 void initbuttons(void)
@@ -124,23 +125,26 @@ void initbuttons(void)
 /*------------------------------SYSTEM FUNCTIONS------------------------------*/
 uint8 getbatlvl(uint8 Ub)
 {
-  uint8 lvl = (240 - Ub) / 14;
-  static uint8 Umax = 241;
-  static uint8 Umin = 220;
+  uint8 lvl = (uint8_t)((2550 - (((uint16_t)Ub) * 10)) / 133);
+  static uint8 Umax = 255;
+  static uint8 Umin = 242;
   static uint8 reslvl = 0;
-  if(Ub < 157) return 100; // bat to low, immediately shotdown code - 100
-  Ub = clamp(Ub, 157, 241);
-  if((Ub <= Umax) && (Ub >= Umin)) return reslvl;
+  if(Ub < 175) return 100; // bat to low, immediately shotdown code - 100
+  Ub = clamp(Ub, 175, 255);
+  if((Ub <= Umax) && (Ub >= Umin))
+  {
+	  return reslvl;
+  }
   else 
   {
     switch(lvl)
     {
-      case 0: Umin = 220; Umax = 241; reslvl = 0; break;
-      case 1: Umin = 206; Umax = 227; reslvl = 1; break;
-      case 2: Umin = 192; Umax = 213; reslvl = 2; break;
-      case 3: Umin = 178; Umax = 199; reslvl = 3; break;
-      case 4: Umin = 164; Umax = 185; reslvl = 4; break;
-      case 5: Umin = 157; Umax = 171; reslvl = 5; break;
+      case 0: Umin = 242; Umax = 255; reslvl = 0; break;
+      case 1: Umin = 228; Umax = 246; reslvl = 1; break;
+      case 2: Umin = 215; Umax = 232; reslvl = 2; break;
+      case 3: Umin = 202; Umax = 219; reslvl = 3; break;
+      case 4: Umin = 189; Umax = 206; reslvl = 4; break;
+      case 5: Umin = 175; Umax = 193; reslvl = 5; break;
     }
   }
   return reslvl;
@@ -157,7 +161,6 @@ void ShutDownLB(void)
 	ILI9341_FillScreen(BLACK);
 	ILI9341_DrawText("BATTARY LOW!", FONT4, 25, 60, GREEN, BLACK);
 	ILI9341_DrawText("The device will turn off now!", FONT4, 25, 80, GREEN, BLACK);
-	HAL_Delay(3000);
 	HAL_GPIO_WritePin(PWR_OFF_GPIO_Port, PWR_OFF_Pin, RESET);
 	while(1);
 }
@@ -166,7 +169,6 @@ void ShutDown(void)
 {
   ILI9341_FillScreen(BLACK);
   ILI9341_DrawText("Shutdown!", FONT4, 25, 100, GREEN, BLACK);
-  HAL_Delay(1000);
   HAL_GPIO_WritePin(PWR_OFF_GPIO_Port, PWR_OFF_Pin, RESET);
   while(1);
 }
@@ -178,16 +180,16 @@ void getbrightlvl(void)
 
 void decbright(void)
 {
-  if(brightPWM <= 40) brightPWM = 70; 
-  brightPWM -=30;
+  if(brightPWM <= 30) brightPWM = 50;
+  brightPWM -=20;
   EEPROM_writebyte(PWM_MEMADR, brightPWM);
   BrightPWMgen(brightPWM);
 }
 
 void incbright(void)
 {
-  if(brightPWM >= 250) brightPWM = 220; 
-  brightPWM +=30;
+  if(brightPWM >= 250) brightPWM = 230;
+  brightPWM +=20;
   EEPROM_writebyte(PWM_MEMADR, brightPWM);
   BrightPWMgen(brightPWM);
 }
@@ -196,7 +198,7 @@ extern TIM_HandleTypeDef htim11;
 
 void BrightPWMgen(uint8 duty_cycle)
 {
-	uint16 dutyCycle = ((uint16)duty_cycle) * 11;
+	uint16 dutyCycle = ((uint16)duty_cycle) * 20;
 	__HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, dutyCycle);
 	HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
 }
@@ -338,7 +340,7 @@ void check_btn_jstk(void) //Test buttons and joystick
   TestBtn(&B2);
   TestBtn(&B3);
   TestBtn(&B4);
-  //checkjoydir();
+  checkjoydir();
 }
 
 void TestBtn(tButton* btn)
@@ -388,6 +390,15 @@ void checkjoydir(void)
         joystick.joyFl = 1;
     }
     if(joystick.oy < 150 && joystick.oy > 100 && joystick.ox < 150 && joystick.ox > 100) joystick.joyFl = 0;
+}
+
+void pressbutton(tButton* btn, void (*func)(void))
+{
+	if(btn->BtnON)
+	{
+		btn->BtnON = 0;
+		func();
+	}
 }
 /*----------------------------------------------------------------------------*/
 
