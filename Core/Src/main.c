@@ -161,6 +161,7 @@ void UART_handler(void)
 	static uint32_t temp_tick = 0;
 	static uint16_t buf_len = 0;
 	static uint16_t buf_len_prev = 0;
+
 	RingBuf_Available(&buf_len, &UartRXbuf);
 	if(buf_len)
 	{
@@ -795,7 +796,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 230400;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
