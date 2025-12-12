@@ -119,8 +119,11 @@ Discarded input sections
                 0x00000000      0x102 ./Core/Src/ILI9341_GFX.o
  .text.ILI9341_DrawFilledRectangleCoord
                 0x00000000       0xbc ./Core/Src/ILI9341_GFX.o
+ .text.ILI9341_DrawNstr
+                0x00000000       0x34 ./Core/Src/ILI9341_GFX.o
  .text.ILI9341_DrawImage
                 0x00000000       0xba ./Core/Src/ILI9341_GFX.o
+ .bss.string.0  0x00000000      0x400 ./Core/Src/ILI9341_GFX.o
  .text          0x00000000        0x0 ./Core/Src/ILI9341_STM32_Driver.o
  .data          0x00000000        0x0 ./Core/Src/ILI9341_STM32_Driver.o
  .bss           0x00000000        0x0 ./Core/Src/ILI9341_STM32_Driver.o
@@ -2022,9 +2025,9 @@ LOAD C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  .text.ILI9341_WriteBuffer
                 0x08000864       0x3c ./Core/Src/ILI9341_STM32_Driver.o
                 0x08000864                ILI9341_WriteBuffer
- .text.ILI9341_SetAddress
+ .text.ILI9341_SetWindow
                 0x080008a0       0x90 ./Core/Src/ILI9341_STM32_Driver.o
-                0x080008a0                ILI9341_SetAddress
+                0x080008a0                ILI9341_SetWindow
  .text.ILI9341_Reset
                 0x08000930       0x48 ./Core/Src/ILI9341_STM32_Driver.o
                 0x08000930                ILI9341_Reset

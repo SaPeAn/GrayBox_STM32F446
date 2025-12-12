@@ -4,5 +4,6 @@
 ../Core/Src/ILI9341_GFX.c:82:6:ILI9341_DrawHollowRectangleCoord	40	static
 ../Core/Src/ILI9341_GFX.c:128:6:ILI9341_DrawFilledRectangleCoord	48	static
 ../Core/Src/ILI9341_GFX.c:170:6:ILI9341_DrawChar	64	static
-../Core/Src/ILI9341_GFX.c:201:6:ILI9341_DrawText	48	static
-../Core/Src/ILI9341_GFX.c:229:6:ILI9341_DrawImage	24	static
+../Core/Src/ILI9341_GFX.c:201:6:ILI9341_DrawNstr	32	static
+../Core/Src/ILI9341_GFX.c:211:6:ILI9341_DrawText	48	static
+../Core/Src/ILI9341_GFX.c:239:6:ILI9341_DrawImage	24	static

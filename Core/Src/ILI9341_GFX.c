@@ -198,6 +198,16 @@ void ILI9341_DrawChar(char ch, const uint8_t font[], uint16_t X, uint16_t Y, uin
 	}
 }
 
+void ILI9341_DrawNstr(char* str, int N, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
+{
+	int i = 0;
+	static char string[1024] = {0};
+	while(str[i++])
+	{
+
+	}
+}
+
 void ILI9341_DrawText(const char* str, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
 {
 	uint8_t charWidth;			/* Width of character */
@@ -231,22 +241,22 @@ void ILI9341_DrawImage(const uint8_t* image, uint8_t orientation)
 	if(orientation == SCREEN_HORIZONTAL_1)
 	{
 		ILI9341_SetRotation(SCREEN_HORIZONTAL_1);
-		ILI9341_SetAddress(0,0,ILI9341_SCREEN_WIDTH,ILI9341_SCREEN_HEIGHT);
+		ILI9341_SetWindow(0,0,ILI9341_SCREEN_WIDTH,ILI9341_SCREEN_HEIGHT);
 	}
 	else if(orientation == SCREEN_HORIZONTAL_2)
 	{
 		ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
-		ILI9341_SetAddress(0,0,ILI9341_SCREEN_WIDTH,ILI9341_SCREEN_HEIGHT);
+		ILI9341_SetWindow(0,0,ILI9341_SCREEN_WIDTH,ILI9341_SCREEN_HEIGHT);
 	}
 	else if(orientation == SCREEN_VERTICAL_2)
 	{
 		ILI9341_SetRotation(SCREEN_VERTICAL_2);
-		ILI9341_SetAddress(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
+		ILI9341_SetWindow(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
 	}
 	else if(orientation == SCREEN_VERTICAL_1)
 	{
 		ILI9341_SetRotation(SCREEN_VERTICAL_1);
-		ILI9341_SetAddress(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
+		ILI9341_SetWindow(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
 	}
 
 	uint32_t counter = 0;

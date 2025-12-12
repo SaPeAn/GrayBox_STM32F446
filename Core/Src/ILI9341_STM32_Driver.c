@@ -50,7 +50,7 @@ void ILI9341_WriteBuffer(uint8_t *buffer, uint16_t len)
     //HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
-void ILI9341_SetAddress(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+void ILI9341_SetWindow(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
 	uint8_t buffer[4];
 	buffer[0] = (uint8_t)(x1 >> 8);
@@ -271,6 +271,7 @@ void ILI9341_DrawColorBurst(uint16_t color, uint32_t size)
 	}
 	else
 	{
+
 		BufferSize = BURST_MAX_SIZE;
 	}
 
@@ -304,7 +305,7 @@ void ILI9341_DrawColorBurst(uint16_t color, uint32_t size)
 
 void ILI9341_FillScreen(uint16_t color)
 {
-	ILI9341_SetAddress(0, 0, LCD_WIDTH, LCD_HEIGHT);
+	ILI9341_SetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
 	ILI9341_DrawColorBurst(color, LCD_WIDTH*LCD_HEIGHT);
 }
 
@@ -340,7 +341,7 @@ void ILI9341_DrawRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t heig
 		height=LCD_HEIGHT-y;
 	}
 
-	ILI9341_SetAddress(x, y, x+width-1, y+height-1);
+	ILI9341_SetWindow(x, y, x+width-1, y+height-1);
 	ILI9341_DrawColorBurst(color, height*width);
 }
 
@@ -353,7 +354,7 @@ void ILI9341_DrawHLine(uint16_t x, uint16_t y, uint16_t width, uint16_t color)
 		width=LCD_WIDTH-x;
 	}
 
-	ILI9341_SetAddress(x, y, x+width-1, y);
+	ILI9341_SetWindow(x, y, x+width-1, y);
 	ILI9341_DrawColorBurst(color, width);
 }
 
@@ -366,6 +367,6 @@ void ILI9341_DrawVLine(uint16_t x, uint16_t y, uint16_t height, uint16_t color)
 		height=LCD_HEIGHT-y;
 	}
 
-	ILI9341_SetAddress(x, y, x, y+height-1);
+	ILI9341_SetWindow(x, y, x, y+height-1);
 	ILI9341_DrawColorBurst(color, height);
 }

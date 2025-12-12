@@ -50,7 +50,7 @@ void ILI9341_Reset(void);
 void ILI9341_Enable(void);
 void ILI9341_Init(void);
 void ILI9341_SetRotation(uint8_t rotation);
-void ILI9341_SetAddress(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+void ILI9341_SetWindow(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void ILI9341_DrawColor(uint16_t color);
 void ILI9341_DrawColorBurst(uint16_t color, uint32_t size);
 void ILI9341_FillScreen(uint16_t color);

@@ -745,7 +745,7 @@ Disassembly of section .text:
  8000898:	40020000 	.word	0x40020000
  800089c:	40020400 	.word	0x40020400
 
-080008a0 <ILI9341_SetAddress>:
+080008a0 <ILI9341_SetWindow>:
  80008a0:	b590      	push	{r4, r7, lr}
  80008a2:	b085      	sub	sp, #20
  80008a4:	af00      	add	r7, sp, #0
@@ -1243,7 +1243,7 @@ Disassembly of section .text:
  8000d94:	b29b      	uxth	r3, r3
  8000d96:	2100      	movs	r1, #0
  8000d98:	2000      	movs	r0, #0
- 8000d9a:	f7ff fd81 	bl	80008a0 <ILI9341_SetAddress>
+ 8000d9a:	f7ff fd81 	bl	80008a0 <ILI9341_SetWindow>
  8000d9e:	4b09      	ldr	r3, [pc, #36]	@ (8000dc4 <ILI9341_FillScreen+0x44>)
  8000da0:	881b      	ldrh	r3, [r3, #0]
  8000da2:	b29b      	uxth	r3, r3
@@ -1428,7 +1428,7 @@ Disassembly of section .text:
  8000f1e:	88b9      	ldrh	r1, [r7, #4]
  8000f20:	88f8      	ldrh	r0, [r7, #6]
  8000f22:	4622      	mov	r2, r4
- 8000f24:	f7ff fcbc 	bl	80008a0 <ILI9341_SetAddress>
+ 8000f24:	f7ff fcbc 	bl	80008a0 <ILI9341_SetWindow>
  8000f28:	883b      	ldrh	r3, [r7, #0]
  8000f2a:	887a      	ldrh	r2, [r7, #2]
  8000f2c:	fb02 f303 	mul.w	r3, r2, r3
