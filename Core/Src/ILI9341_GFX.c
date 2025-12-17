@@ -1,6 +1,21 @@
 #include "ILI9341_STM32_Driver.h"
 #include "ILI9341_GFX.h"
 
+struct tDispBuf{
+	uint16_t n_pix;
+	uint16_t width;
+union {
+	uint8_t send[25600];
+	uint16_t color[12800];
+};
+} dispbuf;
+
+void dispbuf_init(void)
+{
+	dispbuf.n_pix = 0;
+	dispbuf.width = 0;
+}
+
 /* imprecise small delay */
 __STATIC_INLINE void DelayUs(volatile uint32_t us)
 {
@@ -198,16 +213,6 @@ void ILI9341_DrawChar(char ch, const uint8_t font[], uint16_t X, uint16_t Y, uin
 	}
 }
 
-void ILI9341_DrawNstr(char* str, int N, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
-{
-	int i = 0;
-	static char string[1024] = {0};
-	while(str[i++])
-	{
-
-	}
-}
-
 void ILI9341_DrawText(const char* str, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
 {
 	uint8_t charWidth;			/* Width of character */
@@ -216,7 +221,7 @@ void ILI9341_DrawText(const char* str, const uint8_t font[], uint16_t X, uint16_
 
 	while (*str)
 	{
-		ILI9341_DrawChar(*str, font, X, Y, color, bgcolor);
+		ILI9341_DrawCharFast(*str, font, X, Y, color, bgcolor);
 
 		/* Check character width and calculate proper position */
 		uint8_t *tempChar = (uint8_t*)&font[((*str - 0x20) * fOffset) + 4];
@@ -235,6 +240,85 @@ void ILI9341_DrawText(const char* str, const uint8_t font[], uint16_t X, uint16_
 		str++;
 	}
 }
+
+void ILI9341_DrawCharFast(char ch, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
+{
+	if ((ch < 31) || (ch > 127)) return;
+
+	uint8_t fOffset, fWidth, fHeight, fBPL;
+	uint8_t *tempChar;
+    uint16_t tempcolor;
+    uint16_t tempbgcolor;
+
+    tempcolor = (color >> 8) & 0x00FF;
+    tempcolor |= (color << 8) & 0xFF00;
+
+    tempbgcolor = (bgcolor >> 8) & 0x00FF;
+    tempbgcolor |= (bgcolor << 8) & 0xFF00;
+
+	fOffset = font[0];
+	fWidth = font[1];
+	fHeight = font[2];
+	fBPL = font[3];
+
+	tempChar = (uint8_t*)&font[((ch - 0x20) * fOffset) + 4]; /* Current Character = Meta + (Character Index * Offset) */
+
+	/* Clear background first */
+	//ILI9341_DrawRectangle(X, Y, fWidth, fHeight, bgcolor);
+	dispbuf.n_pix = 0; //j*ILI9341_SCREEN_WIDTH + X;
+	for (int j=0; j < fHeight; j++)
+	{
+
+		for (int i=0; i < fWidth; i++)
+		{
+			uint8_t z =  tempChar[fBPL * i + ((j & 0xF8) >> 3) + 1]; /* (j & 0xF8) >> 3, increase one by 8-bits */
+			uint8_t b = 1 << (j & 0x07);
+			if (( z & b ) != 0x00)
+			{
+				dispbuf.color[dispbuf.n_pix] = tempcolor;
+			}
+			else
+			{
+				dispbuf.color[dispbuf.n_pix] = tempbgcolor;
+			}
+			dispbuf.n_pix++;
+		}
+	}
+
+	ILI9341_SetWindow(X, Y, (X + fWidth - 1), (Y + fHeight - 1));
+	ILI9341_WriteBuffer(dispbuf.send, 2*dispbuf.n_pix);
+}
+
+void ILI9341_DrawTextFast(const char* str, const uint8_t font[], uint16_t X, uint16_t Y, uint16_t color, uint16_t bgcolor)
+{
+	uint8_t charWidth;			/* Width of character */
+	uint8_t fOffset = font[0];	/* Offset of character */
+	uint8_t fWidth = font[1];	/* Width of font */
+	uint16_t X0 = X;
+
+	while (*str)
+	{
+		ILI9341_DrawCharFast(*str, font, X, Y, color, bgcolor);
+
+		/* Check character width and calculate proper position */
+		uint8_t *tempChar = (uint8_t*)&font[((*str - 0x20) * fOffset) + 4];
+		charWidth = tempChar[0];
+
+		if(charWidth + 2 < fWidth)
+		{
+			/* If character width is smaller than font width */
+			X += (charWidth + 2);
+		}
+		else
+		{
+			X += fWidth;
+		}
+		str++;
+	}
+	ILI9341_SetWindow(X0, Y, (X - 1), (Y + 19));
+	//ILI9341_WriteBuffer(bufferC, sizeof(bufferC));
+}
+
 
 void ILI9341_DrawImage(const uint8_t* image, uint8_t orientation)
 {

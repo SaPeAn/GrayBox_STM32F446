@@ -34,6 +34,15 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct {
+	uint16_t X;
+	uint16_t Y;
+	uint16_t ch;
+
+}tMatrix;
+
+tMatrix MatArr[22];
+
 typedef union{
 	uint16_t array[5];
 	struct{
@@ -49,15 +58,10 @@ typedef union{
 typedef struct
 {
   int batlvl;
-  int batlvl_prev;
   int jox;
-  int jox_prev;
   int joy;
-  int joy_prev;
   int tmpr;
-  int tmpr_prev;
   int vref;
-  int vref_prev;
 }ADCaverdat_t;
 
 typedef struct
@@ -287,6 +291,35 @@ void displayparams(void)
 	}
 }
 
+void showmatrix(void)
+{
+	char ch = 32;
+	randinit();
+	for(int i = 0; i < 21; i++)
+	{
+		  MatArr[i].X = 15 * getrand(21);
+		  MatArr[i].Y = 20 * getrand(12);
+	}
+	while(1)
+	{
+		check_btn_jstk();
+		for(int i = 0; i < 21; i++)
+		  {
+			  ILI9341_DrawRectangle(MatArr[i].X, MatArr[i].Y + 12 , 15, 24 + getrand(36), BLACK);
+			  ILI9341_DrawCharFast(ch, FONT4, MatArr[i].X, MatArr[i].Y, GREEN, BLACK);
+			  ch++;
+			  if(ch > 127) ch = 32 + getrand(95);
+			  MatArr[i].Y += 20;
+			  if(MatArr[i].Y > 220)
+			  {
+				  MatArr[i].Y = 0;
+				  MatArr[i].X = getrand(21) * 15;
+			  }
+		  }
+		  HAL_Delay(50);
+		  pressbutton(&B1, HAL_NVIC_SystemReset);
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -347,8 +380,9 @@ int main(void)
 
   //---------------------------------------------
 
-  HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
+ //HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
+//  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
+
 
   while (1)
   {
@@ -360,6 +394,8 @@ int main(void)
 	  pressbutton(&B1, decbright);
 	  pressbutton(&B2, incbright);
 	  pressbutton(&B3, ShutDown);
+	  pressbutton(&B4, showmatrix);
+
 
 
 
