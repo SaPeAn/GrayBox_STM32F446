@@ -3,12 +3,15 @@
 volatile uint16_t LCD_HEIGHT = ILI9341_SCREEN_HEIGHT;
 volatile uint16_t LCD_WIDTH	 = ILI9341_SCREEN_WIDTH;
 
+volatile uint8_t dmabusyflag = 0;
+
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   /* Deselect when Tx Complete */
   if(hspi == HSPI_INSTANCE)
   {
 	  HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
+	  dmabusyflag = 0;
   }
 }
 
@@ -50,26 +53,15 @@ void ILI9341_WriteBuffer(uint8_t *buffer, uint16_t len)
     HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
-void ILI9341_SetWindow(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+void ILI9341_WriteBuffer_DMA(uint8_t *buffer, uint16_t len)
 {
-	uint8_t buffer[4];
-	buffer[0] = (uint8_t)(x1 >> 8);
-	buffer[1] = (uint8_t)x1;
-	buffer[2] = (uint8_t)(x2 >> 8);
-	buffer[3] = (uint8_t)x2;
-
-	ILI9341_WriteCommand(0x2A);
-	ILI9341_WriteBuffer(buffer, sizeof(buffer));
-
-	buffer[0] = y1 >> 8;
-	buffer[1] = y1;
-	buffer[2] = y2 >> 8;
-	buffer[3] = y2;
-
-	ILI9341_WriteCommand(0x2B);
-	ILI9341_WriteBuffer(buffer, sizeof(buffer));
-
-	ILI9341_WriteCommand(0x2C);
+	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_SET);	//data
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);	//select
+	while(dmabusyflag);
+	while(!__HAL_SPI_GET_FLAG(HSPI_INSTANCE, SPI_FLAG_TXE));
+	dmabusyflag = 1;
+	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, buffer, len);
+    //HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
 void ILI9341_Reset(void)
@@ -160,7 +152,7 @@ void ILI9341_Init(void)
 	//FRAME RATIO CONTROL, STANDARD RGB COLOR
 	ILI9341_WriteCommand(0xB1);
 	ILI9341_WriteData(0x00);
-	ILI9341_WriteData(0x18);
+	ILI9341_WriteData(0x1F);
 
 	//DISPLAY FUNCTION CONTROL
 	ILI9341_WriteCommand(0xB6);
@@ -254,6 +246,30 @@ void ILI9341_SetRotation(uint8_t rotation)
 		break;
 	}
 }
+
+
+void ILI9341_SetWindow(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+{
+	uint8_t buffer[4];
+	buffer[0] = (uint8_t)(x1 >> 8);
+	buffer[1] = (uint8_t)x1;
+	buffer[2] = (uint8_t)(x2 >> 8);
+	buffer[3] = (uint8_t)x2;
+
+	ILI9341_WriteCommand(0x2A);
+	ILI9341_WriteBuffer(buffer, sizeof(buffer));
+
+	buffer[0] = y1 >> 8;
+	buffer[1] = y1;
+	buffer[2] = y2 >> 8;
+	buffer[3] = y2;
+
+	ILI9341_WriteCommand(0x2B);
+	ILI9341_WriteBuffer(buffer, sizeof(buffer));
+
+	ILI9341_WriteCommand(0x2C);
+}
+
 
 void ILI9341_DrawColor(uint16_t color)
 {

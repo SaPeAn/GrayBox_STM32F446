@@ -3,6 +3,7 @@
 #include "ILI9341_GFX.h"
 #include "ILI9341_STM32_Driver.h"
 #include <stdlib.h>
+#include <stdarg.h>
 #include "fonts.h"
 
 #define SEC_A_DAY 86400
@@ -343,6 +344,18 @@ void check_btn_jstk(void) //Test buttons and joystick
   checkjoydir();
 }
 
+//void Led096Set(uint8 N, ...)
+//{
+//  I2C_Start();
+//  I2C_WriteByte(DEV_ADDR);
+//  I2C_WriteByte(0x00);
+//  va_list arg;
+//  va_start(arg, N);
+//  for(uint8 i = 0; i < N; i++) I2C_WriteByte(va_arg(arg,uint8));
+//  va_end(arg);
+//  I2C_Stop();
+//}
+
 void TestBtn(tButton* btn)
 {
   if (!HAL_GPIO_ReadPin(btn->Port, btn->Pin) && !btn->BtnFl && ((HAL_GetTick() - btn->btnTimer) > 30)) {
@@ -371,6 +384,8 @@ void TestBtn(tButton* btn)
   }
 }
 
+uint8_t ClearBtnStates();
+
 void checkjoydir(void)
 {
     if(joystick.oy > 150 && joystick.joyFl == 0) {
@@ -392,13 +407,15 @@ void checkjoydir(void)
     if(joystick.oy < 150 && joystick.oy > 100 && joystick.ox < 150 && joystick.ox > 100) joystick.joyFl = 0;
 }
 
-void pressbutton(tButton* btn, void (*func)(void))
+uint8_t pressbutton(tButton* btn, void (*func)(void))
 {
 	if(btn->BtnON)
 	{
 		btn->BtnON = 0;
-		func();
+		if(func != NULL) func();
+		return 1;
 	}
+	return 0;
 }
 /*----------------------------------------------------------------------------*/
 

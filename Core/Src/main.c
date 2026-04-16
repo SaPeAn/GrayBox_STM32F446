@@ -15,7 +15,7 @@
   *
   ******************************************************************************
   */
-#define  AVER_PERIOD    100
+#define  AVER_PERIOD    10
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -76,19 +76,19 @@ typedef struct
   uint8_t Vpowsup_prev[128];
   uint8_t Temper[128];
   uint8_t Temper_prev[128];
-  uint8_t UART_string[1024];
-  uint8_t UART_string_prev[1024];
+  uint8_t UART_string[128];
+  uint8_t UART_string_prev[128];
   uint8_t Seconds[128];
   uint8_t Seconds_prev[128];
 }DispDat_t;
 
-char InfoStr[150] = {0};
+char InfoStr[120] = {0};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 RINGBUF_t UartRXbuf;
-uint8_t rx_buf[1024] = {0};
+uint8_t rx_buf[120] = {0};
 uint8_t temp_byte;
 DispDat_t temp_str = {0};
 
@@ -236,58 +236,25 @@ void ADC_handler(void)
 void displayparams(void)
 {
 	static char tempstring[10][100];
-	static char tempstring_prev[10][100];
-	static uint16_t text_color = WHITE;
-
-	sprintf(tempstring[0], "jx%03u jy%03u BAT%03u<%d>", joystick.ox, joystick.oy, Ubat, batlvl);
-	sprintf(tempstring[1], "PWM%03u", brightPWM);
-	if(strncmp(tempstring[0], tempstring_prev[0], 10) || strncmp(tempstring[1], tempstring_prev[1], 10))
-	{
-		ILI9341_DrawText("8 bit parameters", FONT4, 125, 0, text_color, BLACK);
-		ILI9341_DrawText(tempstring[0], FONT4, 125, 20, text_color, BLACK);
-		ILI9341_DrawText(tempstring[1], FONT4, 125, 40, text_color, BLACK);
-		strncpy(tempstring_prev[0], tempstring[0], 100);
-		strncpy(tempstring_prev[1], tempstring[1], 100);
-	}
-
-
-
-	if(strncmp((char*)temp_str.joyx, (char*)temp_str.joyx_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.joyx, FONT4, 0, 0, text_color, BLACK);
-		strncpy((char*)temp_str.joyx_prev, (char*)temp_str.joyx, 128);
-	}
-	if(strncmp((char*)temp_str.joyy, (char*)temp_str.joyy_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.joyy, FONT4, 0, 20, text_color, BLACK);
-		strncpy((char*)temp_str.joyy_prev, (char*)temp_str.joyy, 128);
-	}
-	if(strncmp((char*)temp_str.Vbat, (char*)temp_str.Vbat_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.Vbat, FONT4, 0, 40, text_color, BLACK);
-		strncpy((char*)temp_str.Vbat_prev, (char*)temp_str.Vbat, 128);
-	}
-	if(strncmp((char*)temp_str.Vpowsup, (char*)temp_str.Vpowsup_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.Vpowsup, FONT4, 0, 60, text_color, BLACK);
-		strncpy((char*)temp_str.Vpowsup_prev, (char*)temp_str.Vpowsup, 128);
-	}
-	if(strncmp((char*)temp_str.Temper, (char*)temp_str.Temper_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.Temper, FONT4, 0, 80, text_color, BLACK);
-		strncpy((char*)temp_str.Temper_prev, (char*)temp_str.Temper, 128);
-	}
+	static uint16_t text_color = GREEN;
 
 	sprintf((char*)temp_str.Seconds, "%02lu:%02lu:%02lu", (HAL_GetTick()/1000)/3600, ((HAL_GetTick()/1000)%3600)/60, (HAL_GetTick()/1000)%60);
-	if(strncmp((char*)temp_str.Seconds, (char*)temp_str.Seconds_prev, 10))
-	{
-		ILI9341_DrawText((char*)temp_str.Seconds, FONT4, 0, 100, text_color, BLACK);
-		strncpy((char*)temp_str.Seconds_prev, (char*)temp_str.Seconds, 128);
-	}
-	if(strncmp((char*)temp_str.UART_string, (char*)temp_str.UART_string_prev, 10))
-	{
+	sprintf(tempstring[0], "jx%03u jy%03u BAT%03u<%d>", joystick.ox, joystick.oy, Ubat, batlvl);
+	sprintf(tempstring[1], "PWM%03u", brightPWM);
+
+	ILI9341_DrawText("8 bit parameters", FONT4, 105, 0, text_color, BLACK);
+	ILI9341_DrawText(tempstring[0], FONT4, 105, 20, text_color, BLACK);
+	ILI9341_DrawText(tempstring[1], FONT4, 105, 40, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.joyx, FONT4, 0, 0, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.joyy, FONT4, 0, 20, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.Vbat, FONT4, 0, 40, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.Vpowsup, FONT4, 0, 60, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.Temper, FONT4, 0, 80, text_color, BLACK);
+	ILI9341_DrawText((char*)temp_str.Seconds, FONT4, 0, 100, text_color, BLACK);
+	if(strncmp((char*)temp_str.UART_string, (char*)temp_str.UART_string_prev, 128)) {
+		ILI9341_DrawText("                                      ", FONT4, 0, 120, text_color, BLACK);
 		ILI9341_DrawText((char*)temp_str.UART_string, FONT4, 0, 120, text_color, BLACK);
-		strncpy((char*)temp_str.UART_string_prev, (char*)temp_str.UART_string, 1024);
+		strncpy((char*)temp_str.UART_string_prev,  (char*)temp_str.UART_string, 128);
 	}
 }
 
@@ -317,7 +284,10 @@ void showmatrix(void)
 			  }
 		  }
 		  HAL_Delay(50);
-		  pressbutton(&B1, HAL_NVIC_SystemReset);
+		  if(pressbutton(&B1, NULL)) {
+			  ILI9341_FillScreen(BLACK);
+			  return;
+		  }
 	}
 }
 /* USER CODE END 0 */
@@ -364,8 +334,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   ILI9341_Init();
-  ILI9341_FillScreen(BLACK);
   ILI9341_SetRotation(SCREEN_HORIZONTAL_2);
+  ILI9341_FillScreen(BLACK);
   RingBuf_Init(rx_buf, 1024, 1, &UartRXbuf);
   HAL_Delay(250);
   commoninit();
@@ -380,8 +350,8 @@ int main(void)
 
   //---------------------------------------------
 
- //HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
-//  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
+  HAL_UART_Receive_IT(&huart1, &temp_byte, 1);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_data.array, 5);
 
 
   while (1)
@@ -395,9 +365,6 @@ int main(void)
 	  pressbutton(&B2, incbright);
 	  pressbutton(&B3, ShutDown);
 	  pressbutton(&B4, showmatrix);
-
-
-
 
 #if 0
 	  //Writing numbers
@@ -485,11 +452,18 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLN = 180;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Activate the Over-Drive mode
+  */
+  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
     Error_Handler();
   }
@@ -717,7 +691,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -931,7 +905,7 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 3, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
 }
@@ -1015,7 +989,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart == &huart1)
   {
-    RingBuf_BytePut(temp_byte, &UartRXbuf);
+	RingBuf_DataPut(&temp_byte, 1, &UartRXbuf);
     HAL_UART_Receive_IT (&huart1, &temp_byte, 1);
   }
 }

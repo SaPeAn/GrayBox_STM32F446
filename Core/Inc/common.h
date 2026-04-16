@@ -127,7 +127,7 @@ void TestBtn(tButton*);
 void initbuttons(void);
 void checkjoydir(void);
 void check_btn_jstk(void);
-void pressbutton(tButton*, void (*)(void));
+uint8_t pressbutton(tButton*, void (*)(void));
 /*----------------------------------------------------------------------------*/
 
 #endif	/* COMMON_H */
